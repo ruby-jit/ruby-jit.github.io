@@ -1,0 +1,4 @@
+node_modules/
+# These are downloaded by CI (deploy.yml)
+ruby.wasm
+vendor/

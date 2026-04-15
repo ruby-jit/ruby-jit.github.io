@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Try ZJIT</title>
+    <script src="vendor/split.min.js"></script>
+    <script src="vendor/underscore.min.js"></script>
+    <script src="vendor/highlight.min.js"></script>
+    <link rel="stylesheet" href="vendor/iongraph.css" />
+    <link rel="stylesheet" href="vendor/highlight.min.css" />
+    <link rel="stylesheet" href="index.css" />
+    <script src="vendor/iongraph.js"></script>
+    <script type="module" src="main.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel" id="left-panel">
+            <div class="share-block">
+                <label>Share URL:</label>
+                <input type="text" id="share-url" readonly />
+            </div>
+            <div id="editor"></div>
+            <div class="button-bar">
+                <button id="execute-btn" disabled>Loading...</button>
+            </div>
+        </div>
+        <div class="gutter" id="gutter"></div>
+        <div class="right-panel" id="right-panel">
+            <div id="status-overlay" style="display:none"></div>
+            <div id="iongraph-root"></div>
+        </div>
+    </div>
+    <script>
+        const ui = new iongraph.StandaloneUI();
+        document.getElementById('iongraph-root').appendChild(ui.root);
+    </script>
+</body>
+</html>

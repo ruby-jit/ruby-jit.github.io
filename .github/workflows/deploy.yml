@@ -1,0 +1,104 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ruby_repo:
+        description: 'Ruby repository (owner/repo)'
+        default: 'k0kubun/ruby'
+      ruby_branch:
+        description: 'Branch that built ruby-zjit.wasm'
+        default: 'zjit-wasm'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      RUBY_REPO: ${{ inputs.ruby_repo || 'k0kubun/ruby' }}
+      RUBY_BRANCH: ${{ inputs.ruby_branch || 'zjit-wasm' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ruby-zjit.wasm from Ruby CI
+        env:
+          GH_TOKEN: ${{ secrets.RUBY_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -ex
+
+          # Find the latest successful WebAssembly workflow run on the specified branch
+          run_id=$(gh api "repos/${RUBY_REPO}/actions/workflows/wasm.yml/runs?branch=${RUBY_BRANCH}&status=success&per_page=1" \
+            --jq '.workflow_runs[0].id')
+
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "No successful WebAssembly workflow run found for ${RUBY_REPO}@${RUBY_BRANCH}"
+            exit 1
+          fi
+
+          echo "Downloading artifact from run $run_id"
+
+          # Download the artifact. Requires a token with actions:read on the source repo.
+          # Set the RUBY_REPO_TOKEN secret if the default GITHUB_TOKEN doesn't have cross-repo access.
+          gh run download "$run_id" --repo "${RUBY_REPO}" --name ruby-zjit-wasm --dir .
+
+          # The artifact contains the 'ruby' binary (asyncified wasm)
+          mv ruby ruby.wasm 2>/dev/null || true
+          ls -lh ruby.wasm
+
+      - name: Download vendor files
+        run: |
+          set -ex
+          mkdir -p vendor/browser_wasi_shim
+
+          # iongraph (from tryzjit.fly.dev)
+          for f in iongraph.js iongraph.css; do
+            wget -q "https://tryzjit.fly.dev/vendor/$f" -O "vendor/$f"
+          done
+
+          # Yace editor + plugins (MIT, Peter Solopov)
+          for f in yace.min.js tab.js isKey.js; do
+            wget -q "https://tryzjit.fly.dev/vendor/$f" -O "vendor/$f"
+          done
+
+          # Highlight.js (BSD-3-Clause)
+          wget -q "https://tryzjit.fly.dev/vendor/highlight.min.js" -O "vendor/highlight.min.js"
+          wget -q "https://tryzjit.fly.dev/vendor/highlight.min.css" -O "vendor/highlight.min.css"
+
+          # Split.js (MIT) and Underscore.js (MIT)
+          wget -q "https://tryzjit.fly.dev/vendor/split.min.js" -O "vendor/split.min.js"
+          wget -q "https://tryzjit.fly.dev/vendor/underscore.min.js" -O "vendor/underscore.min.js"
+
+          # browser_wasi_shim (Apache-2.0, bjorn3)
+          WASI_SHIM_VERSION="0.4.2"
+          for f in index.js wasi.js wasi_defs.js fd.js fs_mem.js fs_opfs.js strace.js debug.js; do
+            wget -q "https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@${WASI_SHIM_VERSION}/dist/$f" -O "vendor/browser_wasi_shim/$f"
+          done
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
