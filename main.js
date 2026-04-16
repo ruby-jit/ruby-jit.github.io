@@ -62,6 +62,63 @@ editor.textarea.addEventListener("input", debounce(() => {
   saveShareUrl(editor.value);
 }, DEBOUNCE_TIMEOUT_MS));
 
+// Replace the iongraph number input with a named dropdown, sorted by line number.
+function patchFunctionSelector(data) {
+  const menuBar = ui.menuBar;
+  if (!menuBar || !data.functions || data.functions.length === 0) return;
+
+  // Build sorted index: parse line number from name like "test@(input):6"
+  const indexed = data.functions.map((f, i) => {
+    const match = f.name.match(/:(\d+)$/);
+    return { index: i, name: f.name, line: match ? parseInt(match[1], 10) : Infinity };
+  });
+  indexed.sort((a, b) => a.line - b.line);
+
+  // Hide the original number-based selector and the name display
+  menuBar.funcSelector.hidden = true;
+  menuBar.funcName.hidden = true;
+
+  // Remove any previously created dropdown
+  const existing = menuBar.root.querySelector(".func-dropdown-container");
+  if (existing) existing.remove();
+
+  // Create dropdown
+  const select = document.createElement("select");
+  select.className = "ig-w5";
+  indexed.forEach(({ index, name }) => {
+    const opt = document.createElement("option");
+    opt.value = index;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+  select.addEventListener("change", () => {
+    menuBar.switchFunc(parseInt(select.value, 10));
+    // Keep our dropdown visible (iongraph's update() would re-hide things)
+    menuBar.funcSelector.hidden = true;
+    menuBar.funcName.hidden = true;
+  });
+
+  const container = document.createElement("div");
+  container.className = "func-dropdown-container";
+  container.style.display = "flex";
+  container.style.alignItems = "center";
+  container.style.gap = "6px";
+  container.appendChild(document.createTextNode("Function "));
+  container.appendChild(select);
+
+  // Insert into the menu bar's first child (the left section)
+  const leftSection = menuBar.root.querySelector(".ig-pv2");
+  if (leftSection) {
+    leftSection.appendChild(container);
+  }
+
+  // Select the first function by line number
+  select.value = indexed[0].index;
+  menuBar.switchFunc(indexed[0].index);
+  menuBar.funcSelector.hidden = true;
+  menuBar.funcName.hidden = true;
+}
+
 function showOverlay(html) {
   const overlay = document.getElementById("status-overlay");
   const iongraphRoot = document.getElementById("iongraph-root");
@@ -151,6 +208,7 @@ async function executeCode() {
     if (result.functions && result.functions.length > 0) {
       hideOverlay();
       ui.setIonJSON(result);
+      patchFunctionSelector(result);
     } else {
       showOverlay('<div class="no-functions"><strong>No functions compiled</strong><br><br>Try adding a function that gets called at least twice.</div>');
     }
