@@ -210,6 +210,14 @@ function setupResizableGutter() {
 
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("execute-btn").addEventListener("click", executeCode);
+  document.getElementById("copy-url-btn").addEventListener("click", () => {
+    const url = document.getElementById("share-url").value;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById("copy-url-btn");
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+    });
+  });
   setupResizableGutter();
   initWorker();
 });
