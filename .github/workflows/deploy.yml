@@ -7,7 +7,7 @@ on:
     inputs:
       ruby_repo:
         description: 'Ruby repository (owner/repo)'
-        default: 'k0kubun/ruby'
+        default: 'ruby-jit/ruby'
       ruby_branch:
         description: 'Branch that built ruby-zjit.wasm'
         default: 'zjit-wasm'
@@ -25,7 +25,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      RUBY_REPO: ${{ inputs.ruby_repo || 'k0kubun/ruby' }}
+      RUBY_REPO: ${{ inputs.ruby_repo || 'ruby-jit/ruby' }}
       RUBY_BRANCH: ${{ inputs.ruby_branch || 'zjit-wasm' }}
     steps:
       - uses: actions/checkout@v4
